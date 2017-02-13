@@ -18,7 +18,7 @@ def drawHough():
     #bimg = cv2.medianBlur(img,5)
     cimg = cv2.cvtColor(bimg,cv2.COLOR_GRAY2BGR)
 
-    circles = cv2.HoughCircles(bimg,cv2.HOUGH_GRADIENT,param1,param2,
+    circles = cv2.HoughCircles(bimg,cv2.cv.CV_HOUGH_GRADIENT,param1,param2,
                                 param1=50,param2=30,minRadius=minRadius,maxRadius=maxRadius)
     circles = np.uint16(np.around(circles))
     for i in circles[0,:]:
