@@ -13,12 +13,13 @@ def drawHough():
     minRadius = cv2.getTrackbarPos('minRadius','image')
     maxRadius = cv2.getTrackbarPos('maxRadius','image')
 
-    bimg = cv2.GaussianBlur(img,(5,5),0)
+
+    bimg = cv2.GaussianBlur(src=img,ksize=(3,3),sigmaX=0, sigmaY=0)
     #bimg = cv2.medianBlur(img,5)
     cimg = cv2.cvtColor(bimg,cv2.COLOR_GRAY2BGR)
 
     circles = cv2.HoughCircles(bimg,cv2.HOUGH_GRADIENT,param1,param2,
-                                param1=50,param2=30,minRadius=0,maxRadius=maxRadius)
+                                param1=50,param2=30,minRadius=minRadius,maxRadius=maxRadius)
     circles = np.uint16(np.around(circles))
     for i in circles[0,:]:
         cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
@@ -36,10 +37,10 @@ cv2.createTrackbar('param2','image',1,2000,handleSlidebar)
 cv2.setTrackbarPos('param2','image',300)
 
 cv2.createTrackbar('minRadius','image',0,1000,handleSlidebar)
-cv2.setTrackbarPos('minRadius','image',50)
+cv2.setTrackbarPos('minRadius','image',0)
 
 cv2.createTrackbar('maxRadius','image',0,1000,handleSlidebar)
-cv2.setTrackbarPos('maxRadius','image',500)
+cv2.setTrackbarPos('maxRadius','image',0)
 
 drawHough()
 
