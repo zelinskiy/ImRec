@@ -135,5 +135,5 @@ gdIO = do
 
 main :: IO ()
 main = do
-  gdIO
-  --houghIO "test.png" "out.png" 800 400
+  --gdIO
+  houghIO2 "test0.png" "out.png" 200 200

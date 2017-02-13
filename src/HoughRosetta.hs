@@ -1,13 +1,14 @@
 
 module HoughRosetta (
         hough
-      , houghIO
+      , houghIO2
         ) where
 
 import Control.Monad (forM_, when)
-import Data.Array ((!))
+import Data.List (sortBy)
+import Data.Array ((!), Array, Ix, assocs)
 import Data.Array.ST (newArray, writeArray, readArray, runSTArray)
-import qualified Data.Foldable as F (maximum)
+import qualified Data.Foldable as F (maximum, toList)
 
 -- Library JuicyPixels:
 import Codec.Picture (DynamicImage(ImageRGB8, ImageRGBA8), Image,
@@ -35,8 +36,11 @@ fromIntegralP (x, y) = (fromIntegral x, fromIntegral y)
   The origin is in the upper left, so y is increasing down.
   The image is scaled according to thetaSize and distSize.
 -}
-hough :: Image PixelRGB8 -> Int -> Int -> Image PixelRGB8
-hough image thetaSize distSize = hImage
+compar :: Int -> Int -> Int
+compar m rs = if m > 3 then m + rs else rs
+
+hough :: Image PixelRGB8 -> Int -> Int -> Array (Int,Int) Integer
+hough image thetaSize distSize = accBin
   where
     width = imageWidth image
     height = imageHeight image
@@ -84,6 +88,7 @@ hough image thetaSize distSize = hImage
 
       return arr
 
+    {-
     maxAcc = F.maximum accBin
 
     -- The image representation of the accumulation bins.
@@ -92,9 +97,21 @@ hough image thetaSize distSize = hImage
       in PixelRGB8 l l l
 
     hImage = generateImage hTransform thetaSize distSize
+    -}
 
 
+houghToImage :: Array (Int,Int) Integer -> Int -> Int -> Image PixelRGB8
+houghToImage arr thetaSize distSize = hImage where
+  maxAcc = fromIntegral $ F.maximum arr
 
+  -- The image representation of the accumulation bins.
+  hTransform x y =
+    let l = 255 - (truncate $ fromIntegral (arr ! (x, y)) / maxAcc * 255)
+    in PixelRGB8 l l l
+
+  hImage = generateImage hTransform thetaSize distSize
+
+{-
 houghIO :: FilePath -> FilePath -> Int -> Int -> IO ()
 houghIO path outpath thetaSize distSize = do
   image <- readImage path
@@ -105,5 +122,36 @@ houghIO path outpath thetaSize distSize = do
     _                         -> putStrLn $ "Expecting RGB8 or RGBA8 image"
   where
     doImage image = do
-      let houghImage = hough image thetaSize distSize
+      let houghArr = hough image thetaSize distSize
+      let houghImage = houghToImage houghArr thetaSize distSize
       savePngImage outpath $ ImageRGB8 houghImage
+-}
+
+lineFunction :: Double -> Double -> (Double -> Double)
+lineFunction theta r = (\x -> (r - x * cos theta) / sin theta )
+
+houghIO2 :: FilePath -> FilePath -> Int -> Int -> IO ()
+houghIO2 path outpath thetaSize distSize = do
+  image <- readImage path
+  case image of
+    Left err                  -> putStrLn err
+    Right (ImageRGB8 image')  -> doImage image'
+    Right (ImageRGBA8 image') -> doImage $ pixelMap dropTransparency image'
+    _                         -> putStrLn $ "Expecting RGB8 or RGBA8 image"
+  where
+    doImage1 image = do
+      let arr = hough image thetaSize distSize
+      let img = houghToImage arr thetaSize distSize
+      savePngImage outpath $ ImageRGB8 img
+
+
+
+    doImage2 image = print
+      $ take 5
+      $ reverse
+      $ sortBy (\(x1,y1,m1) (x2,y2,m2) -> compare m1 m2)
+      $ map (\((x,y),m)->(x,y,m))
+      $ assocs
+      $ hough image thetaSize distSize
+
+    doImage = doImage1
