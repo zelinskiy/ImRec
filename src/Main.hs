@@ -2,7 +2,6 @@
 
 module Main where
 
-<<<<<<< HEAD
 import Data.Array.Repa
 import System.Environment
 import Data.Array.Repa.Repr.ForeignPtr
@@ -19,21 +18,6 @@ import Control.Monad
 TODO:
 Many circles on single MutableImage
 Circle detection
--}
-
-{-
-main1 :: IO ()
-main1 = do
-    let n = 90.0
-    let f1 = "lol.png"
-    let f2 = "lol2.png"
-
-    inp' <- PR.readImageRGBA f1
-    case inp' of
-      Left err -> putStrLn err
-      Right img -> do
-        rotated <- (computeP $ rotate n (imgData img) :: IO (Array F DIM3 Word8))
-        savePngImage f2 (imgToImage rotated)
 -}
 
 
@@ -81,9 +65,9 @@ bresenham mpic lineColor (x0,y0) radius =
     writePixel pic (x0 + radius) y0           lineColor
     writePixel pic (x0 - radius) y0           lineColor
 
-    bres pic f ddF_x ddF_y x y x0 y0 radius lineColor
+    bresStep pic f ddF_x ddF_y x y x0 y0 radius lineColor
 
-bres pic _f _ddF_x _ddF_y _x _y x0 y0 radius lineColor = do
+bresStep pic _f _ddF_x _ddF_y _x _y x0 y0 radius lineColor = do
   f     <- readSTRef _f
   ddF_x <- readSTRef _ddF_x
   ddF_y <- readSTRef _ddF_y
@@ -115,66 +99,4 @@ bres pic _f _ddF_x _ddF_y _x _y x0 y0 radius lineColor = do
     writePixel pic (x0 + y2) (y0 - x2) lineColor
     writePixel pic (x0 - y2) (y0 - x2) lineColor
 
-    bres pic _f _ddF_x _ddF_y _x _y x0 y0 radius lineColor
-
-
-
-
-
-
-
-originalFnc :: Int -> Int -> Word8
-originalFnc x y = if (x,y) `elem` ps then 255 else 0
-  where ps = generateCirclePoints (600,600) 100
-
-type Point = (Int, Int)
-
--- Takes the center of the circle and radius, and returns the circle points
-generateCirclePoints :: Point -> Int -> [Point]
-generateCirclePoints (x0, y0) radius
-  -- Four initial points, plus the generated points
-  = (x0, y0 + radius) : (x0, y0 - radius) : (x0 + radius, y0) : (x0 - radius, y0) : points
-    where
-      -- Creates the (x, y) octet offsets, then maps them to absolute points in all octets.
-      points = concatMap generatePoints $ unfoldr step initialValues
-      generatePoints (x, y)
-        = [(xop x0 x', yop y0 y') | (x', y') <- [(x, y), (y, x)], xop <- [(+), (-)], yop <- [(+), (-)]]
-
-      -- The initial values for the loop
-      initialValues = (1 - radius, 1, (-2) * radius, 0, radius)
-
-      -- One step of the loop. The loop itself stops at Nothing.
-      step (f, ddf_x, ddf_y, x, y) | x >= y = Nothing
-                                   | otherwise = Just ((x', y'), (f', ddf_x', ddf_y', x', y'))
-                                     where
-                                       (f', ddf_y', y') | f >= 0 = (f + ddf_y' + ddf_x', ddf_y + 2, y - 1)
-                                                        | otherwise = (f + ddf_x, ddf_y, y)
-                                       ddf_x' = ddf_x + 2
-                                       x' = x + 1
-
-
--- <<rotate
-rotate :: Double -> Array D DIM3 Word8 -> Array D DIM3 Word8
-rotate deg g = fromFunction (Z :. y :. x :. k) f      -- <1>
-    where
-        sh@(Z :. y :. x :. k)   = extent g
-
-        !theta = pi/180 * deg                         -- <2>
-
-        !st = sin theta                               -- <3>
-        !ct = cos theta
-
-        !cy = fromIntegral y / 2 :: Double            -- <4>
-        !cx = fromIntegral x / 2 :: Double
-
-        f (Z :. i :. j :. k)                          -- <5>
-          | inShape sh old = g ! old                  -- <6>
-          | otherwise      = 0                        -- <7>
-          where
-            fi = fromIntegral i - cy                  -- <8>
-            fj = fromIntegral j - cx
-
-            i' = round (st * fj + ct * fi + cy)       -- <9>
-            j' = round (ct * fj - st * fi + cx)
-
-            old = Z :. i' :. j' :. k                  -- <10>
+    bresStep pic _f _ddF_x _ddF_y _x _y x0 y0 radius lineColor
