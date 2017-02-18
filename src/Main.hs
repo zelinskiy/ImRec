@@ -1,139 +1,179 @@
+{-# LANGUAGE FlexibleContexts, BangPatterns #-}
+
 module Main where
 
-import qualified Graphics.GD as GD
-import Control.Monad (mapM_,foldM)
-import Control.Applicative ((<$>),(<*>))
-
-import HoughRosetta
-
-
-
-type RGBA = (Int,Int,Int,Int)
-
--- | Utility function for clamping a value between a minimum and maximum value
-clamp :: (Ord a, Num a) =>  a       -- ^ Minimum
-                            -> a    -- ^ Maximum
-                            -> a    -- ^ Value to clamp
-                            -> a
-clamp minm maxm num
-  | num < minm = minm
-  | num > maxm = maxm
-  | otherwise = num
-
-
-
-
-convolute ::    GD.Image
-                -> [[Float]]    -- ^ Convolution matrix
-                -> Float        -- ^ Divisor
-                -> Float        -- ^ Offset
-                -> IO ()
-convolute img matrix fdiv offset = do
-    (width,height) <- GD.imageSize img
-    imgCpy <- GD.copyImage img
-    mapM_ (\(x,y) ->
-            convoluteImage img imgCpy matrix fdiv offset x y
-        ) $ (,) <$> [0..(width-1)] <*> [0..(height-1)]
-
-convoluteImage ::    GD.Image
-                  -> GD.Image
-                  -> [[Float]]
-                  -> Float
-                  -> Float
-                  -> Int
-                  -> Int
-                  -> IO ()
-convoluteImage img imgCpy matrix fdiv offset x y = do
-    (nr,ng,nb,na) <- foldM (\(or,og,ob,oa) (k,j) -> do
-            let
-                yy = min (max (y-(1+j)) 0) (max (y-1) 0)
-                xx = min (max (x-(1+k)) 0) (max (x-1) 0)
-                mVal = matrix!!j!!k
-            curr <- GD.getPixel (xx,yy) imgCpy
-            let (r,g,b,a) = GD.toRGBA curr
-            return ( or + fromIntegral r * mVal
-                    ,og + fromIntegral g * mVal
-                    ,ob + fromIntegral b * mVal
-                    ,fromIntegral a)
-        ) (0.0,0.0,0.0,0.0) $ (,) <$> [0..(length (matrix!!0) - 1)]
-                                  <*> [0..(length matrix - 1)]
-    let
-        new_r = clamp 0 255 . truncate $ (nr/fdiv)+offset
-        new_g = clamp 0 255 . truncate $ (ng/fdiv)+offset
-        new_b = clamp 0 255 . truncate $ (nb/fdiv)+offset
-    GD.setPixel (x,y) (GD.rgba new_r new_g new_b (truncate na)) img
-
-edgeConvolution8 :: GD.Image -> IO ()
-edgeConvolution8 img = convolute img [
-  [-1.0,-1.0,-1.0],
-  [-1.0, 8.0,-1.0],
-  [-1.0,-1.0,-1.0]
-  ] 1 0
-
-edgeConvolution4 :: GD.Image -> IO ()
-edgeConvolution4 img = convolute img [
-  [0.0,1.0,0.0],
-  [1.0,-4.0,1.0],
-  [0.0,1.0,0.0]
-  ] 1 0
-
-gaussianBlur :: GD.Image -> IO ()
-gaussianBlur img = convolute img [
-  [1.0,2.0,1.0],
-  [2.0,4.0,2.0],
-  [1.0,2.0,1.0]
-  ] 16 0
+import Data.Array.Repa
+import System.Environment
+import Data.Array.Repa.Repr.ForeignPtr
+import Data.Word
+import Codec.Picture.Repa as PR
+import Codec.Picture
+import Data.List
+import Control.Monad.ST
+import Codec.Picture.Types
+import Data.STRef
+import Control.Monad
 
 {-
-gaussianBlur5x5 :: Image -> IO ()
-gaussianBlur5x5 img = convolute img [
-  [1.0,4.0 ,6.0 ,4.0 ,1.0],
-  [4.0,16.0,24.0,16.0,4.0],
-  [6.0,24.0,36.0,24.0,6.0],
-  [4.0,16.0,24.0,16.0,4.0],
-  [1.0,4.0 ,6.0 ,4.0 ,1.0]
-  ] 256 0
+TODO:
+Many circles on single MutableImage
+Circle detection
+-}
+
+{-
+main1 :: IO ()
+main1 = do
+    let n = 90.0
+    let f1 = "lol.png"
+    let f2 = "lol2.png"
+
+    inp' <- PR.readImageRGBA f1
+    case inp' of
+      Left err -> putStrLn err
+      Right img -> do
+        rotated <- (computeP $ rotate n (imgData img) :: IO (Array F DIM3 Word8))
+        savePngImage f2 (imgToImage rotated)
 -}
 
 
-pixelTransform ::    GD.Image
-                    -> ( RGBA -> RGBA ) -- ^ Transform function to be performed on each pixel
-                    -> IO ()
-pixelTransform img fx = do
-    (width,height) <- GD.imageSize img
-    mapM_ (\(x,y) -> do
-            curr <- GD.getPixel (x,y) img
-            let
-                (r,g,b,a) = GD.toRGBA curr
-                (nr,ng,nb,na) = fx (r,g,b,a)
-            GD.setPixel (x,y) (GD.rgba nr ng nb na) img
-        ) $ (,) <$> [0..(width-1)] <*> [0..(height-1)]
-
-
-grayscale :: GD.Image -> IO ()
-grayscale img =
-    pixelTransform img (\(r,g,b,a) -> let
-            newcol = truncate $ 0.299 * fromIntegral r + 0.587 * fromIntegral g + 0.114 * fromIntegral b
-        in (newcol, newcol, newcol, a))
-
-resizeTimes :: Int -> GD.Image -> IO GD.Image
-resizeTimes n img = do
-  size <- GD.imageSize img
-  let sizeX = (fst size) `div` n
-  let sizeY = (snd size) `div` n
-  GD.resizeImage sizeX sizeY img
-
-
-
-gdIO = do
-  img <- GD.loadPngFile "test2.png"
-  res <- resizeTimes 2 img
-  --grayscale res
-  edgeConvolution4 res
-  GD.savePngFile "out.png" res
-  putStrLn "hello world"
-
-main :: IO ()
 main = do
-  --gdIO
-  houghIO2 "test0.png" "out.png" 200 200
+  let back = 255::Pixel8
+  let fill = 0 :: Pixel8
+  let width = 1000
+  let height = 1000
+  let cent = (250,250)
+  let rad = 200
+
+  let initImg = generateImage (\x y -> back) width height
+  let res = ImageY8 <$> bresenham initImg fill cent rad
+  case res of
+    Just r -> savePngImage "lol2.png" r
+    Nothing -> putStrLn "out of bounds"
+  putStrLn "1"
+
+
+checkBounds mW mH rad (x0,y0)
+  | (x0 - rad, y0 - rad) < (0,0)    = False
+  | (x0 + rad, y0 - rad) > (mW,mH)  = False
+  | otherwise                       = True
+
+
+bresenham :: (Pixel px)
+          => Image px
+          -> px
+          -> (Int,Int)
+          -> Int
+          -> Maybe (Image px)
+bresenham mpic lineColor (x0,y0) radius =
+  if not $ checkBounds (imageWidth mpic) (imageHeight mpic) radius (x0,y0)
+  then Nothing
+  else Just $ runST $ do
+    pic   <- thawImage mpic
+    f     <- newSTRef $ 1 - radius
+    ddF_x <- newSTRef 1
+    ddF_y <- newSTRef $ -2 * radius
+    x     <- newSTRef 0
+    y     <- newSTRef radius
+
+    writePixel pic x0           (y0 + radius) lineColor
+    writePixel pic x0           (y0 - radius) lineColor
+    writePixel pic (x0 + radius) y0           lineColor
+    writePixel pic (x0 - radius) y0           lineColor
+
+    bres pic f ddF_x ddF_y x y x0 y0 radius lineColor
+
+bres pic _f _ddF_x _ddF_y _x _y x0 y0 radius lineColor = do
+  f     <- readSTRef _f
+  ddF_x <- readSTRef _ddF_x
+  ddF_y <- readSTRef _ddF_y
+  x     <- readSTRef _x
+  y     <- readSTRef _y
+
+  if x > y then freezeImage pic
+  else do
+    when (f >= 0) (
+      writeSTRef _y     (y - 1) >>
+      writeSTRef _ddF_y (ddF_y + 2) >>
+      writeSTRef _f     (f + ddF_y + 2) )
+
+    writeSTRef _x     (x+1)
+    writeSTRef _ddF_x (ddF_x + 2)
+    f2 <- readSTRef _f
+    writeSTRef _f (f2 + ddF_x + 2)
+
+    x2 <- readSTRef _x
+    y2 <- readSTRef _y
+
+    writePixel pic (x0 + x2) (y0 + y2) lineColor
+    writePixel pic (x0 - x2) (y0 + y2) lineColor
+    writePixel pic (x0 + x2) (y0 - y2) lineColor
+    writePixel pic (x0 - x2) (y0 - y2) lineColor
+
+    writePixel pic (x0 + y2) (y0 + x2) lineColor
+    writePixel pic (x0 - y2) (y0 + x2) lineColor
+    writePixel pic (x0 + y2) (y0 - x2) lineColor
+    writePixel pic (x0 - y2) (y0 - x2) lineColor
+
+    bres pic _f _ddF_x _ddF_y _x _y x0 y0 radius lineColor
+
+
+
+
+
+
+
+originalFnc :: Int -> Int -> Word8
+originalFnc x y = if (x,y) `elem` ps then 255 else 0
+  where ps = generateCirclePoints (600,600) 100
+
+type Point = (Int, Int)
+
+-- Takes the center of the circle and radius, and returns the circle points
+generateCirclePoints :: Point -> Int -> [Point]
+generateCirclePoints (x0, y0) radius
+  -- Four initial points, plus the generated points
+  = (x0, y0 + radius) : (x0, y0 - radius) : (x0 + radius, y0) : (x0 - radius, y0) : points
+    where
+      -- Creates the (x, y) octet offsets, then maps them to absolute points in all octets.
+      points = concatMap generatePoints $ unfoldr step initialValues
+      generatePoints (x, y)
+        = [(xop x0 x', yop y0 y') | (x', y') <- [(x, y), (y, x)], xop <- [(+), (-)], yop <- [(+), (-)]]
+
+      -- The initial values for the loop
+      initialValues = (1 - radius, 1, (-2) * radius, 0, radius)
+
+      -- One step of the loop. The loop itself stops at Nothing.
+      step (f, ddf_x, ddf_y, x, y) | x >= y = Nothing
+                                   | otherwise = Just ((x', y'), (f', ddf_x', ddf_y', x', y'))
+                                     where
+                                       (f', ddf_y', y') | f >= 0 = (f + ddf_y' + ddf_x', ddf_y + 2, y - 1)
+                                                        | otherwise = (f + ddf_x, ddf_y, y)
+                                       ddf_x' = ddf_x + 2
+                                       x' = x + 1
+
+
+-- <<rotate
+rotate :: Double -> Array D DIM3 Word8 -> Array D DIM3 Word8
+rotate deg g = fromFunction (Z :. y :. x :. k) f      -- <1>
+    where
+        sh@(Z :. y :. x :. k)   = extent g
+
+        !theta = pi/180 * deg                         -- <2>
+
+        !st = sin theta                               -- <3>
+        !ct = cos theta
+
+        !cy = fromIntegral y / 2 :: Double            -- <4>
+        !cx = fromIntegral x / 2 :: Double
+
+        f (Z :. i :. j :. k)                          -- <5>
+          | inShape sh old = g ! old                  -- <6>
+          | otherwise      = 0                        -- <7>
+          where
+            fi = fromIntegral i - cy                  -- <8>
+            fj = fromIntegral j - cx
+
+            i' = round (st * fj + ct * fi + cy)       -- <9>
+            j' = round (ct * fj - st * fi + cx)
+
+            old = Z :. i' :. j' :. k                  -- <10>

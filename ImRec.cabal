@@ -14,11 +14,10 @@ cabal-version:       >=1.10
 extra-source-files:  README.md
 
 executable ImRec
-  other-modules:        HoughRosetta
   hs-source-dirs:       src
   main-is:              Main.hs
   default-language:     Haskell2010
-  build-depends:        base >= 4.7 && < 5
-                      , gd >= 3000
+  build-depends:        base >= 4 && < 5
+                      , repa
                       , JuicyPixels
-                      , array
+                      , JuicyPixels-repa
