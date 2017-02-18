@@ -2,6 +2,7 @@
 
 module Main where
 
+<<<<<<< HEAD
 import Data.Array.Repa
 import System.Environment
 import Data.Array.Repa.Repr.ForeignPtr
@@ -177,3 +178,15 @@ rotate deg g = fromFunction (Z :. y :. x :. k) f      -- <1>
             j' = round (ct * fj - st * fi + cx)
 
             old = Z :. i' :. j' :. k                  -- <10>
+=======
+import HoughRosetta
+import Experimental
+
+
+
+
+main :: IO ()
+main = do
+  --gdIO
+  houghIO2 "test0.png" "out2.png" 200 200
+>>>>>>> 74904096b444e1157979c9aba3227391ff13090b
