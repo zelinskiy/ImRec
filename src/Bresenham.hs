@@ -16,16 +16,18 @@ checkBounds mW mH rad (x0,y0)
   | otherwise                       = True
 
 bresenham :: (Pixel px) -- ^ Pixel type , e.g. Pixel8
-          => Image px   -- ^ Image will be copied
+          => Int        -- ^ mwidth
+          -> Int        -- ^ mheight
+          -> px         -- ^ background pixel
           -> px         -- ^ Line pixel
           -> (Int,Int)  -- ^ Center
           -> Int        -- ^ Radius
           -> Maybe (Image px)
-bresenham mpic lineColor (x0,y0) radius =
-  if not $ checkBounds (imageWidth mpic) (imageHeight mpic) radius (x0,y0)
+bresenham mwidth mheight bgPixel lineColor (x0,y0) radius =
+  if not $ checkBounds mwidth mheight radius (x0,y0)
   then Nothing
   else Just $ runST $ do
-    pic   <- thawImage mpic
+    pic   <- createMutableImage mwidth mheight bgPixel
     f     <- newSTRef $ 1 - radius
     ddF_x <- newSTRef 1
     ddF_y <- newSTRef $ -2 * radius
