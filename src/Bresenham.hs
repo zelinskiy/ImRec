@@ -1,5 +1,6 @@
 module Bresenham (
-    bresenham
+      bresenham
+    , checkBounds
 ) where
 
 import Codec.Picture
@@ -9,7 +10,7 @@ import Data.STRef
 import Control.Monad
 
 
-
+--rewrite this to pure logic
 checkBounds mW mH rad (x0,y0)
   | (x0 - rad, y0 - rad) < (0,0)    = False
   | (x0 + rad, y0 - rad) > (mW,mH)  = False

@@ -18,7 +18,6 @@ import Control.Parallel.Strategies
 import Bresenham
 import Utils
 
---threaded -O2 -rtsopts
 
 {-
 TODO:
@@ -39,8 +38,8 @@ tests = do
 
   let width = 1000
       height = 1000
-      maxrad = 100
-      minrad = 100
+      maxrad = 300
+      minrad = 10
 
   let gen a b n = sequence $ replicate n $ randomRIO (a,b::Int)
   cases <- zipWith3 (\a b c -> ((a,b),c))
@@ -56,10 +55,34 @@ tests = do
 
   print $ x
 
+mkRandomImage = do
+  x <- randomRIO (10,999)
+  y <- randomRIO (10,999)
+  r <- randomRIO (20,999)
+  print $ (x,y,r)
+  if checkBounds 999 999 r (x,y)
+  then saveCircleIO "lol2.png" (x,y) r
+  else mkRandomImage
 
 
 
-main1 = saveCircleIO (500,500) 150
+main1 = saveCircleIO "lol2.png" (500,500) 150
+
+findCircleIO imgname = do
+  img' <- readPng imgname
+  let img = case img' of
+        Right (ImageY8 i) -> i
+        Left err -> error $ "ALARM "++err
+        Right (ImageRGB16 i) -> error $ "Incorrect format RGB16"
+        Right (ImageRGBA8 i) -> error $ "Incorrect format RGB8"
+        Right (ImageRGBA16 i) -> error $ "Incorrect format RGBA16"
+        Right (ImageRGBF i) -> error $ "Incorrect format RGBF"
+
+        Right (ImageYCbCr8 i) -> error $ "Incorrect format Jpeg"
+        Right (ImageRGB8 i) -> error $ "Incorrect format RGB8"
+        Right (ImageY16 i) -> error $ "Incorrect format Y16"
+        _ -> error $ "Incorrect format"
+  print $ findCenter img
 
 main = do
   img' <- readPng "lol2.png"
@@ -76,7 +99,8 @@ main = do
         Right (ImageY16 i) -> error $ "Incorrect format Y16"
         _ -> error $ "Incorrect format"
   --print $ hough img 360 50
-  tests
+  --tests
+
   putStrLn "done"
 
 --------------------------------------------------------------------------------
@@ -210,10 +234,9 @@ findCircle1 img size rad = maximumBy (\(_, m1) (_, m2) -> compare m1 m2)
 --------------------------------------------------------------------------------
 
 
-saveCircleIO :: (Int,Int) -> Int -> IO ()
-saveCircleIO cent rad = do
-  let filename = "lol2.png"
-      back = 255::Pixel8
+saveCircleIO :: String -> (Int,Int) -> Int -> IO ()
+saveCircleIO filename cent rad = do
+  let back = 255::Pixel8
       fill = 0 :: Pixel8
       width = 1000
       height = 1000
