@@ -93,6 +93,14 @@ findCenter img = (center, radius)
         center = (x1 + dx `div` 2, y1 + dy `div` 2)
         radius = dy `div` 2
 
+findDiagonal :: Image Pixel8 -> ((Int,Int),(Int,Int))
+findDiagonal img = (pa, pb)
+  where predicate = (==) 0
+        left =  findLeftCorner img predicate
+        right =  findRightCorner img predicate
+        (pa,pb) = runEval $ evalTuple2 rpar rpar (left,right)
+
+
 findLeftCorner  :: (Pixel px) => Image px -> (px -> Bool) -> (Int,Int)
 findLeftCorner pic predicate = step (0,0)
   where mx = (imageWidth pic) - 1
