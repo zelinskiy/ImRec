@@ -1,6 +1,8 @@
 module Bresenham (
       bresenham
     , checkBounds
+    , bresenhamLine
+    , bresenhamSquare
 ) where
 
 import Codec.Picture
@@ -8,6 +10,61 @@ import Control.Monad.ST
 import Codec.Picture.Types
 import Data.STRef
 import Control.Monad
+import Data.List (sort,unfoldr)
+
+bresenhamLine :: (Pixel px) -- ^ Pixel type , e.g. Pixel8
+              => px         -- ^ background color
+              -> px         -- ^ line color
+              -> Int        -- ^ mwidth
+              -> Int        -- ^ mheight
+              -> (Int,Int)  -- ^ from
+              -> (Int,Int)  -- ^ to
+              -> Maybe (Image px)
+bresenhamLine bgPixel linePixel mwidth mheight pa pb =
+  Just $ runST $ do
+    pic   <- createMutableImage mwidth mheight bgPixel
+    bresLineStep (line pa pb) pic linePixel
+
+bresLineStep [] pic _ = freezeImage pic
+bresLineStep ((x, y):ps) pic pix = writePixel pic x y pix
+                            >> bresLineStep ps pic pix
+
+bresenhamSquare :: (Pixel px) -- ^ Pixel type , e.g. Pixel8
+                => px         -- ^ background color
+                -> px         -- ^ line color
+                -> Int        -- ^ mwidth
+                -> Int        -- ^ mheight
+                -> (Int,Int)  -- ^ A
+                -> (Int,Int)  -- ^ B
+                -> (Int,Int)  -- ^ C
+                -> (Int,Int)  -- ^ D
+                -> Maybe (Image px)
+bresenhamSquare bgPixel linePixel mwidth mheight pa pb pc pd =
+  Just $ runST $ do
+    pic   <- createMutableImage mwidth mheight bgPixel
+    let ab = line pa pb
+    let bc = line pb pc
+    let cd = line pc pd
+    let da = line pd pa
+    bresLineStep (ab ++ bc ++ cd ++ da) pic linePixel
+
+line :: (Int,Int) -> (Int,Int) -> [(Int,Int)]
+line pa@(xa,ya) pb@(xb,yb) = map maySwitch . unfoldr go $ (x1,y1,0)
+  where
+    steep = abs (yb - ya) > abs (xb - xa)
+    maySwitch = if steep then (\(x,y) -> (y,x)) else id
+    [(x1,y1),(x2,y2)] = sort [maySwitch pa, maySwitch pb]
+    deltax = x2 - x1
+    deltay = abs (y2 - y1)
+    ystep = if y1 < y2 then 1 else -1
+    go (xTemp, yTemp, error)
+        | xTemp > x2 = Nothing
+        | otherwise  = Just ((xTemp, yTemp), (xTemp + 1, newY, newError))
+        where
+          tempError = error + deltay
+          (newY, newError) = if (2*tempError) >= deltax
+                            then (yTemp+ystep,tempError-deltax)
+                            else (yTemp,tempError)
 
 
 --rewrite this to pure logic
