@@ -3,6 +3,7 @@ module Bresenham (
     , checkBounds
     , bresenhamLine
     , bresenhamSquare
+    , bresenhamDots
 ) where
 
 import Codec.Picture
@@ -15,6 +16,19 @@ import Data.List (sort,unfoldr)
 bresLineStep [] pic _ = freezeImage pic
 bresLineStep ((x, y):ps) pic pix = writePixel pic x y pix
                             >> bresLineStep ps pic pix
+
+bresenhamDots :: (Pixel px) -- ^ Pixel type , e.g. Pixel8
+              => px         -- ^ background color
+              -> px         -- ^ line color
+              -> Int        -- ^ mwidth
+              -> Int        -- ^ mheight
+              -> [(Int,Int)]  -- ^ dots
+              -> Maybe (Image px)
+bresenhamDots bgPixel linePixel mwidth mheight ps =
+  Just $ runST $ do
+    pic   <- createMutableImage mwidth mheight bgPixel
+    bresLineStep ps pic linePixel
+
 
 bresenhamLine :: (Pixel px) -- ^ Pixel type , e.g. Pixel8
               => px         -- ^ background color

@@ -34,3 +34,4 @@ executable ImRec
                       , JuicyPixels-repa
                       , array
                       , parallel
+                      , vector
