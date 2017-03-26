@@ -20,13 +20,12 @@ findPointsByDiagonal (pa@(x1, y1), pc@(x2, y2)) = (pa, pb, pc, pd)
 findSquare :: Image Pixel8 -> Square2
 findSquare = findPointsByDiagonal . findDiagonal
 
-saveSquareIO :: Square2 -> IO ()
-saveSquareIO (pa, pb, pc, pd) = do
+saveSquareIO :: String -> Square2 -> IO ()
+saveSquareIO filename (pa, pb, pc, pd) = do
   let back = 255::Pixel8
       fill = 0 :: Pixel8
       width = 1000
       height = 1000
-      filename = "sq.png"
   putStrLn $ "making " ++ filename
   let res = ImageY8 <$> bresenhamSquare back fill width height pa pb pc pd
   case res of

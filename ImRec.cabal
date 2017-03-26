@@ -15,21 +15,22 @@ extra-source-files:  README.md
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Bresenham, Utils
   build-depends:       base >= 4.7 && < 5
-                     , JuicyPixels
-                     , array
   default-language:    Haskell2010
 
 executable ImRec
   hs-source-dirs:       src
-  other-modules:        Bresenham, Utils
+  other-modules:        Bresenham
+                      , Utils
+                      , Circle
+                      , Square
   main-is:              Main.hs
   default-language:     Haskell2010
   build-depends:        base >= 4.7 && < 5
-                      , repa
                       , JuicyPixels
-                      , JuicyPixels-repa
                       , array
                       , random
+                      , repa
+                      , JuicyPixels-repa
+                      , array
                       , parallel

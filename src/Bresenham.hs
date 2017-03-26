@@ -12,6 +12,10 @@ import Data.STRef
 import Control.Monad
 import Data.List (sort,unfoldr)
 
+bresLineStep [] pic _ = freezeImage pic
+bresLineStep ((x, y):ps) pic pix = writePixel pic x y pix
+                            >> bresLineStep ps pic pix
+
 bresenhamLine :: (Pixel px) -- ^ Pixel type , e.g. Pixel8
               => px         -- ^ background color
               -> px         -- ^ line color
@@ -24,10 +28,6 @@ bresenhamLine bgPixel linePixel mwidth mheight pa pb =
   Just $ runST $ do
     pic   <- createMutableImage mwidth mheight bgPixel
     bresLineStep (line pa pb) pic linePixel
-
-bresLineStep [] pic _ = freezeImage pic
-bresLineStep ((x, y):ps) pic pix = writePixel pic x y pix
-                            >> bresLineStep ps pic pix
 
 bresenhamSquare :: (Pixel px) -- ^ Pixel type , e.g. Pixel8
                 => px         -- ^ background color
@@ -57,11 +57,11 @@ line pa@(xa,ya) pb@(xb,yb) = map maySwitch . unfoldr go $ (x1,y1,0)
     deltax = x2 - x1
     deltay = abs (y2 - y1)
     ystep = if y1 < y2 then 1 else -1
-    go (xTemp, yTemp, error)
+    go (xTemp, yTemp, err)
         | xTemp > x2 = Nothing
         | otherwise  = Just ((xTemp, yTemp), (xTemp + 1, newY, newError))
         where
-          tempError = error + deltay
+          tempError = err + deltay
           (newY, newError) = if (2*tempError) >= deltax
                             then (yTemp+ystep,tempError-deltax)
                             else (yTemp,tempError)
