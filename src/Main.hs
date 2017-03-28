@@ -2,7 +2,7 @@ module Main where
 
 import Circle (saveCircleIO, findCircleIO)
 import Square (saveSquareIO, findSquareIO, findPointsByDiagonal)
-import Dots   (saveDotsIO  , findDotsIO)
+import Dots   (saveDotsIO  , findDotsIO,  findDotsBmpIO)
 
 import Bresenham (bresenhamLine, bresenhamSquare, bresenhamDots)
 import Codec.Picture
