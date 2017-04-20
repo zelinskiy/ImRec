@@ -25,6 +25,7 @@ executable ImRec
                       , Circle
                       , Square
                       , Dots
+                      , Lines
   main-is:              Main.hs
   default-language:     Haskell2010
   build-depends:        base >= 4.7 && < 5
@@ -36,3 +37,4 @@ executable ImRec
                       , array
                       , parallel
                       , vector
+                      , primitive
